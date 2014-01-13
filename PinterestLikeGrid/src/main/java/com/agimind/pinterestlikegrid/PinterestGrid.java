@@ -82,7 +82,6 @@ public class PinterestGrid extends ViewGroup {
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-            Log.d(TAG, String.format("distance %s %s", distanceX, distanceY));
             int viewPortBottom = getHeight() - getPaddingBottom();
             int areaBottom = getAreaBottom();
             int viewPortTop = 0;
@@ -100,23 +99,23 @@ public class PinterestGrid extends ViewGroup {
                 offset = -Math.abs(viewPortBottom - areaBottom);
             }
 
-            offsetChildren(offset);
+            scrollBy(0, -offset);
             return true;
         }
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            Log.d(TAG, String.format("velocity %s %s", velocityX, velocityY));
-//            fling((int) -velocityX, (int) -velocityY);
+//            Log.d("onFling", String.format("velocity %s %s", velocityX, velocityY));
+            fling((int) -velocityX, (int) -velocityY);
             return true;
         }
     };
 
     private void fling(int velocityX, int velocityY){
-        scroller.forceFinished(true);
-        int startY = (int) 0;
-        scroller.fling(0, 20, 0, velocityY, 0, 0, 0, 3000, 0, 0);
-        ViewCompat.postInvalidateOnAnimation(this);
+        int areaHeihgt = Math.abs(getAreaBottom() - getAreaTop());
+        scroller.fling(0, getScrollY(), 0, velocityY, 0, 0, 0, getAreaTop(), 0, 0);
+        invalidate();
+//        ViewCompat.postInvalidateOnAnimation(this);
     }
 
 
@@ -311,13 +310,17 @@ public class PinterestGrid extends ViewGroup {
         return lowestView - gridBottom;
     }
 
+    /**
+     * Return bottom line of widget entire area
+     * @return bottom line of widget entire area
+     */
     private int getAreaBottom() {
         Column column;
         int lowestView = 0;
         View lastView = getChildAt(getChildCount() - 1);
         LayoutParams lastViewLp = (LayoutParams) lastView.getLayoutParams();
         if (lastViewLp.isFooterOrHeader()){
-            lowestView = lastView.getBottom();
+            lowestView = lastView.getBottom() - getScrollY();
         } else {
             column = getCol(GET_LOWEST);
             lowestView = column.bottomEnd;
@@ -424,14 +427,14 @@ public class PinterestGrid extends ViewGroup {
                 break;
             case GET_TOPPER:
                 for (Column column : columns) {
-                    if (result.topEnd < column.topEnd){
+                    if (result.topEnd > column.topEnd){
                         result = column;
                     }
                 }
                 break;
             case ADD_TO_TOP:
                 for (Column column : columns) {
-                    if (result.topEnd > column.topEnd){
+                    if (result.topEnd < column.topEnd){
                         result = column;
                     }
                 }
@@ -651,7 +654,8 @@ public class PinterestGrid extends ViewGroup {
         boolean needsInvalidate = false;
 
         if(scroller.computeScrollOffset()){
-
+//            Log.d("computeScroll", String.format("%d", scroller.getCurrY()));
+            scrollTo(0, scroller.getCurrY());
         }
     }
 
@@ -736,6 +740,17 @@ public class PinterestGrid extends ViewGroup {
         for (Column column : columns) {
             column.topEnd += offset;
             column.bottomEnd += offset;
+        }
+    }
+
+    @Override
+    public void scrollTo(int x, int y) {
+        int oldScrollY = getScrollY();
+        int distanceY = oldScrollY - y;
+        super.scrollTo(x, y);
+        for (Column column : columns) {
+            column.topEnd += distanceY;
+            column.bottomEnd += distanceY;
         }
     }
 
