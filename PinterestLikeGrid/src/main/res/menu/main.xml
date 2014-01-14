@@ -11,4 +11,10 @@
     <item android:id="@+id/update"
         android:title="Update"
         app:showAsAction="always"/>
+    <item android:id="@+id/scrollto0"
+        android:title="Scroll to 0"
+        app:showAsAction="always"/>
+    <item android:id="@+id/scrolltoBottom"
+        android:title="Scroll To Bottom"
+        app:showAsAction="always"/>
 </menu>

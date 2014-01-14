@@ -2,10 +2,12 @@ package com.agimind.pinterestlikegrid;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewCompat;
+import android.support.v4.widget.EdgeEffectCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseArray;
@@ -71,6 +73,10 @@ public class PinterestGrid extends ViewGroup {
     private SparseArray<LayoutRecord> layoutRecords = new SparseArray<LayoutRecord>();
     private boolean populating;
 
+    // Edge effect / overscroll tracking objects.
+    private EdgeEffectCompat mEdgeEffectTop;
+    private EdgeEffectCompat mEdgeEffectBottom;
+
     private GestureDetectorCompat gestureDetector;
     private GestureDetector.SimpleOnGestureListener gestureDetectorListener = new GestureDetector.SimpleOnGestureListener(){
         @Override
@@ -99,7 +105,14 @@ public class PinterestGrid extends ViewGroup {
                 offset = -Math.abs(viewPortBottom - areaBottom);
             }
 
-            scrollBy(0, -offset);
+            if (Math.abs(offset) > 0){
+                scrollBy(0, -offset);
+            } else if ( distanceY > 0 ) {
+                mEdgeEffectBottom.onPull(Math.abs(distanceY/(float)getHeight()));
+            }
+
+
+
             return true;
         }
 
@@ -112,12 +125,16 @@ public class PinterestGrid extends ViewGroup {
     };
 
     private void fling(int velocityX, int velocityY){
-        int areaHeihgt = Math.abs(getAreaBottom() - getAreaTop());
-        scroller.fling(0, getScrollY(), 0, velocityY, 0, 0, 0, getAreaTop(), 0, 0);
-        invalidate();
-//        ViewCompat.postInvalidateOnAnimation(this);
+        final int height = getHeight();
+        final int areaBottom = getAreaBottom();
+        scroller.fling(0, getScrollY(), 0, velocityY, 0, 0, 0, areaBottom - height, 0, 0);
+        ViewCompat.postInvalidateOnAnimation(this);
     }
 
+    public void flingTo(int maxY){
+        scroller.fling(0, getScrollY(), 0, 1000, 0, 0, 0, maxY, 0, 0);
+        postInvalidate();
+    }
 
     public PinterestGrid(Context context) {
         super(context);
@@ -147,6 +164,9 @@ public class PinterestGrid extends ViewGroup {
         
         gestureDetector = new GestureDetectorCompat(context, gestureDetectorListener);
 
+        mEdgeEffectTop = new EdgeEffectCompat(context);
+        mEdgeEffectBottom = new EdgeEffectCompat(context);
+
         initColumns();
     }
 
@@ -159,6 +179,50 @@ public class PinterestGrid extends ViewGroup {
 
     public void setAdapter(HeaderViewListAdapter adapter){
         this.adapter = adapter;
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        drawEdgeEffectsUnclipped(canvas);
+    }
+
+    /**
+     * Draws the overscroll "glow" at the four edges of the chart region, if necessary. The edges
+     * of the chart region are stored in {@link #mContentRect}.
+     *
+     * @see EdgeEffectCompat
+     */
+    private void drawEdgeEffectsUnclipped(Canvas canvas) {
+        // The methods below rotate and translate the canvas as needed before drawing the glow,
+        // since EdgeEffectCompat always draws a top-glow at 0,0.
+
+        boolean needsInvalidate = false;
+
+        if (!mEdgeEffectTop.isFinished()) {
+            final int restoreCount = canvas.save();
+            mEdgeEffectTop.setSize(getWidth(), getHeight());
+            if (mEdgeEffectTop.draw(canvas)) {
+                needsInvalidate = true;
+            }
+            canvas.restoreToCount(restoreCount);
+        }
+
+        if (!mEdgeEffectBottom.isFinished()) {
+            final int restoreCount = canvas.save();
+            canvas.translate(getLeft() - getRight(), getScrollY() + getHeight());
+            canvas.rotate(180, getWidth(), 0);
+            mEdgeEffectBottom.setSize(getWidth(), getHeight());
+            if (mEdgeEffectBottom.draw(canvas)) {
+                needsInvalidate = true;
+            }
+            canvas.restoreToCount(restoreCount);
+        }
+
+        if (needsInvalidate) {
+            ViewCompat.postInvalidateOnAnimation(this);
+        }
     }
 
     @Override
@@ -256,6 +320,7 @@ public class PinterestGrid extends ViewGroup {
 //        }
 //    }
 
+
     private int fillDown(int fromPosition, int overhang) {
         int gridBottom = getHeight() - getPaddingBottom();
         final int fillTo = gridBottom + overhang;
@@ -314,7 +379,7 @@ public class PinterestGrid extends ViewGroup {
      * Return bottom line of widget entire area
      * @return bottom line of widget entire area
      */
-    private int getAreaBottom() {
+    public int getAreaBottom() {
         Column column;
         int lowestView = 0;
         View lastView = getChildAt(getChildCount() - 1);
@@ -328,7 +393,7 @@ public class PinterestGrid extends ViewGroup {
         return lowestView;
     }
 
-    private int getAreaTop() {
+    public int getAreaTop() {
         Column column = getCol(GET_TOPPER);
         return column.topEnd;
     }
@@ -654,7 +719,6 @@ public class PinterestGrid extends ViewGroup {
         boolean needsInvalidate = false;
 
         if(scroller.computeScrollOffset()){
-//            Log.d("computeScroll", String.format("%d", scroller.getCurrY()));
             scrollTo(0, scroller.getCurrY());
         }
     }

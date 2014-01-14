@@ -39,6 +39,7 @@ public class MainActivity extends ActionBarActivity {
             "http://192.168.0.84:8005/media/comics/2013/10/12/3/COMICS_PNG_1386692781522.png",
             "http://192.168.0.84:8005/media/comics/2013/02/12/3/COMICS_PNG_1385983495724.png",
             "http://192.168.0.84:8005/media/comics/2013/02/12/3/COMICS_PNG_1385979833814.png",
+            "http://192.168.0.84:8005/media/comics/2013/02/12/3/COMICS_PNG_1385979833814.png",
 //            "http://farm7.staticflickr.com/6101/6853156632_6374976d38_c.jpg",
 //            "http://farm8.staticflickr.com/7232/6913504132_a0fce67a0e_c.jpg",
 //            "http://farm5.staticflickr.com/4133/5096108108_df62764fcc_b.jpg",
@@ -72,6 +73,7 @@ public class MainActivity extends ActionBarActivity {
             {413, 217},
             {413, 217},
             {413, 217},
+            {413, 507},
             {413, 507},
     };
 
@@ -108,14 +110,20 @@ public class MainActivity extends ActionBarActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        } else if (id == R.id.update) {
-            Intent intent = getIntent();
-            finish();
-            startActivity(intent);
+        switch (id){
+            case R.id.update:
+                Intent intent = getIntent();
+                finish();
+                startActivity(intent);
+                return true;
+            case R.id.scrollto0:
+                grid.scrollTo(0, 0);
+                return true;
+            case R.id.scrolltoBottom:
+                grid.flingTo(379);
+//                grid.scrollTo(0, grid.getAreaBottom());
+                return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
